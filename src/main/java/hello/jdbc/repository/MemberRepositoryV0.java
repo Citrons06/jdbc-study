@@ -73,8 +73,59 @@ public class MemberRepositoryV0 {
     }
 
     /**
+     * 회원 수정
+     */
+    public void update(String memberId, int money) throws SQLException {
+        String sql = "update member set money=? where member_id=?";
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            // SQL 파라미터 바인딩
+            pstmt.setInt(1, money);
+            pstmt.setString(2, memberId);
+            int resultSize = pstmt.executeUpdate();// DB에 쿼리 실행
+            log.info("resultSize={}", resultSize);
+        } catch (SQLException e) {
+            log.error("db error", e);
+            e.printStackTrace();
+            throw e;
+        } finally {
+            close(con, pstmt, null);
+        }
+    }
+
+    /**
+     * 회원 삭제
+     */
+    public void delete(String memberId) throws SQLException {
+        String sql = "delete from member where member_id=?";
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            pstmt.setString(1, memberId);
+            pstmt.executeUpdate();// DB에 쿼리 실행
+        } catch (SQLException e) {
+            log.error("db error", e);
+            e.printStackTrace();
+            throw e;
+        } finally {
+            close(con, pstmt, null);
+        }
+    }
+
+    /**
      * 사용한 자원들 모두 닫기 (con, stmt, rs)
-     * stmt에 SQLException이 터져도 catch로 잡았기 때문에 con에 영향을 주지 않음
+     * rs나 stmt에 SQLException이 터져도 catch로 잡았기 때문에 con에 영향을 주지 않음
      */
     private void close(Connection con, Statement stmt, ResultSet rs) {
 
