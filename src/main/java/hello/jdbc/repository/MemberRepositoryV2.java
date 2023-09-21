@@ -9,14 +9,14 @@ import java.sql.*;
 import java.util.NoSuchElementException;
 
 /**
- * JDBC - DataSource, JdbcUtils 사용
+ * JDBC - ConnectionParam
  */
 @Slf4j
-public class MemberRepositoryV1 {
+public class MemberRepositoryV2 {
 
     private final DataSource dataSource;
 
-    public MemberRepositoryV1(DataSource dataSource) {
+    public MemberRepositoryV2(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
@@ -80,6 +80,45 @@ public class MemberRepositoryV1 {
     }
 
     /**
+     * Connection 을 파라미터로 전달
+     */
+    public Member findById(Connection con, String memberId) throws SQLException {
+        String sql = "select * from member where member_id = ?";
+
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            pstmt = con.prepareStatement(sql);
+            pstmt.setString(1, memberId);
+
+            rs = pstmt.executeQuery();  // select 결과 담음
+
+            /*
+              next()로 rs에 select 결과가 있는지 확인 후 있으면 멤버 반환, 없으면 NoSuchElementExxception 예외 터트림
+              next() -> true, false 반환
+             */
+            if (rs.next()) {
+                Member member = new Member();
+                member.setMemberId(rs.getString("member_id"));
+                member.setMoney(rs.getInt("money"));
+                return member;
+            } else {
+                throw new NoSuchElementException("member not found memberId = " + memberId);
+            }
+
+        } catch (SQLException e) {
+            log.error("db error", e);
+            throw e;
+        } finally {
+            // connection은 서비스에서 닫아야 한다.
+            JdbcUtils.closeResultSet(rs);
+            JdbcUtils.closeStatement(pstmt);
+        //  JdbcUtils.closeConnection(con);
+        }
+    }
+
+    /**
      * 회원 수정
      */
     public void update(String memberId, int money) throws SQLException {
@@ -103,6 +142,32 @@ public class MemberRepositoryV1 {
             throw e;
         } finally {
             close(con, pstmt, null);
+        }
+    }
+
+    /**
+     * 회원 수정 -> 커넥션을 서비스에서 넘기도록 함
+     */
+    public void update(Connection con, String memberId, int money) throws SQLException {
+        String sql = "update member set money=? where member_id=?";
+
+        PreparedStatement pstmt = null;
+
+        try {
+            pstmt = con.prepareStatement(sql);
+
+            // SQL 파라미터 바인딩
+            pstmt.setInt(1, money);
+            pstmt.setString(2, memberId);
+            int resultSize = pstmt.executeUpdate();// DB에 쿼리 실행
+            log.info("resultSize={}", resultSize);
+        } catch (SQLException e) {
+            log.error("db error", e);
+            e.printStackTrace();
+            throw e;
+        } finally {
+            // connection 은 여기서 닫지 않는다.
+            JdbcUtils.closeStatement(pstmt);
         }
     }
 
